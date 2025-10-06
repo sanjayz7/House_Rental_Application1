@@ -1,0 +1,264 @@
+import React, { useState } from 'react';
+import { Form, Button, Card, Container, Row, Col, Alert, InputGroup } from 'react-bootstrap';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import api from '../api';
+
+const HouseOwnerRegister = () => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    phone: '',
+    company: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { saveSession } = useAuth();
+  const navigate = useNavigate();
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const togglePasswordVisibility = (field) => {
+    if (field === 'password') {
+      setShowPassword(!showPassword);
+    } else {
+      setShowConfirmPassword(!showConfirmPassword);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    // Validation
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await api.post('/auth/register', {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        phone: formData.phone,
+        company: formData.company,
+        role: 'owner'
+      });
+      
+      const { token, user } = response.data;
+      saveSession(token, user);
+      navigate('/owner-dashboard');
+    } catch (err) {
+      console.error('Registration error details:', err);
+      
+      if (err.code === 'ERR_NETWORK') {
+        setError('Network error: Cannot connect to server. Please check if server is running.');
+      } else if (err.response) {
+        setError(`Server error: ${err.response.data?.message || 'Registration failed'}`);
+      } else if (err.request) {
+        setError('No response from server. Please check server connection.');
+      } else {
+        setError('Registration failed. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Container>
+      <Row className="justify-content-center">
+        <Col md={8} lg={6}>
+          <Card className="mt-5 auth-card shadow-lg">
+            <Card.Header className="text-center bg-success text-white">
+              <h3 className="mb-0">
+                <i className="fas fa-user-plus me-2"></i>
+                Register as Property Owner
+              </h3>
+              <p className="mb-0 mt-2 opacity-75">Start listing your rental properties</p>
+            </Card.Header>
+            <Card.Body className="p-4">
+              {error && <Alert variant="danger">{error}</Alert>}
+              
+              <Form onSubmit={handleSubmit} className="auth-form">
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-bold">Full Name *</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleChange}
+                        required
+                        placeholder="Enter your full name"
+                        className="form-control-lg"
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-bold">Email Address *</Form.Label>
+                      <Form.Control
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        required
+                        placeholder="Enter your email"
+                        className="form-control-lg"
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-bold">Phone Number</Form.Label>
+                      <Form.Control
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        placeholder="+1 555 555 5555"
+                        className="form-control-lg"
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="fw-bold">Company/Organization</Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="company"
+                        value={formData.company}
+                        onChange={handleChange}
+                        placeholder="Your company name (optional)"
+                        className="form-control-lg"
+                      />
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                <Form.Group className="mb-3">
+                  <Form.Label className="fw-bold">Password *</Form.Label>
+                  <InputGroup>
+                    <Form.Control
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      required
+                      placeholder="Enter your password"
+                      className="form-control-lg"
+                    />
+                    <Button
+                      variant="outline-secondary"
+                      type="button"
+                      onClick={() => togglePasswordVisibility('password')}
+                      className="password-toggle-btn"
+                      style={{ borderLeft: 'none' }}
+                    >
+                      {showPassword ? (
+                        <i className="fas fa-eye-slash"></i>
+                      ) : (
+                        <i className="fas fa-eye"></i>
+                      )}
+                    </Button>
+                  </InputGroup>
+                  <Form.Text className="text-muted">
+                    Password must be at least 6 characters long
+                  </Form.Text>
+                </Form.Group>
+
+                <Form.Group className="mb-4">
+                  <Form.Label className="fw-bold">Confirm Password *</Form.Label>
+                  <InputGroup>
+                    <Form.Control
+                      type={showConfirmPassword ? "text" : "password"}
+                      name="confirmPassword"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      required
+                      placeholder="Confirm your password"
+                      className="form-control-lg"
+                    />
+                    <Button
+                      variant="outline-secondary"
+                      type="button"
+                      onClick={() => togglePasswordVisibility('confirmPassword')}
+                      className="password-toggle-btn"
+                      style={{ borderLeft: 'none' }}
+                    >
+                      {showConfirmPassword ? (
+                        <i className="fas fa-eye-slash"></i>
+                      ) : (
+                        <i className="fas fa-eye"></i>
+                      )}
+                    </Button>
+                  </InputGroup>
+                </Form.Group>
+
+                <Button
+                  type="submit"
+                  variant="success"
+                  size="lg"
+                  className="w-100 mb-3"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Creating Account...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-user-plus me-2"></i>
+                      Create Owner Account
+                    </>
+                  )}
+                </Button>
+              </Form>
+
+              <div className="auth-links text-center">
+                <p className="mb-2">
+                  Already have an owner account? 
+                  <Link to="/owner-login" className="ms-1 fw-bold text-success">
+                    Sign In Here
+                  </Link>
+                </p>
+                <hr className="my-3" />
+                <p className="mb-0">
+                  <Link to="/login" className="text-muted">
+                    <i className="fas fa-arrow-left me-1"></i>
+                    Back to General Login
+                  </Link>
+                </p>
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+    </Container>
+  );
+};
+
+export default HouseOwnerRegister;
